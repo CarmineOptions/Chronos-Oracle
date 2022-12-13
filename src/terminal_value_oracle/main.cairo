@@ -13,7 +13,7 @@ from starkware.cairo.common.math import assert_le
 from starkware.cairo.common.math_cmp import is_le
 from starkware.starknet.common.syscalls import get_block_timestamp, get_caller_address
 
-from src.structs import Request, Update
+from src.terminal_value_oracle.structs import Request, Update
 
 // ETH Address for rewards
 const ETH_ADDRESS = 0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7;
