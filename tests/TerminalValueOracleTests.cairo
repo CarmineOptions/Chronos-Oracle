@@ -418,6 +418,10 @@ namespace TerminalValueOracleTests {
         );
         assert balance_oracle_2.low = 0;
 
+        // Test that active requests usable index is 0
+        let (usable_idx) = ITerminalValueOracle.get_active_requests_usable_index(proxy_addr, 0);
+        assert usable_idx = 0;
+        
         return ();
     }
     
