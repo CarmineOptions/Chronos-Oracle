@@ -56,14 +56,6 @@ func active_requests(idx: felt) -> (request_info: Request) {
 func cashed_out_requests(idx: felt) -> (request_info: Request) {
 }
 
-// Getter for this contract's balance
-@view
-func get_contract_balance{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (current_balance: Uint256) {
-    let (current_balance) = contract_balance.read();
-
-    return (current_balance,);
-}
-
 // Getter for active Requests based on the index
 // Usefull for iteration over all active requests
 @view
@@ -165,11 +157,6 @@ func register_request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_chec
         amount = reward
     );
 
-    // Update contract_balance storage_var
-    let (current_balance) = contract_balance.read();
-    let (new_balance, _) = uint256_add(current_balance, reward);
-    contract_balance.write(new_balance);
-        
     return ();
 }
 
@@ -204,11 +191,6 @@ func cashout_last_update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
         amount = request.reward
     );
 
-    // Update contract_balance var 
-    let (current_balance) = contract_balance.read();
-    let (new_balance) = uint256_sub(current_balance, request.reward);
-    contract_balance.write(new_balance);
-    
     // Delete request, since it has been paid
     deactivate_request(idx);
 
