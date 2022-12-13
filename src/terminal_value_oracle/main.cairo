@@ -1,22 +1,28 @@
 %lang starknet
 
+from starkware.starknet.common.syscalls import get_contract_address
+from starkware.cairo.common.cairo_builtins import HashBuiltin
+from starkware.cairo.common.math import assert_le, assert_not_zero
+from starkware.cairo.common.math_cmp import is_le
+from starkware.starknet.common.syscalls import get_block_timestamp, get_caller_address
 from starkware.cairo.common.uint256 import (
     Uint256,
     uint256_add,
     uint256_sub,
     uint256_le,
 )
-from starkware.starknet.common.syscalls import get_contract_address
+
 from openzeppelin.token.erc20.IERC20 import IERC20
-from starkware.cairo.common.cairo_builtins import HashBuiltin
-from starkware.cairo.common.math import assert_le
-from starkware.cairo.common.math_cmp import is_le
-from starkware.starknet.common.syscalls import get_block_timestamp, get_caller_address
+from openzeppelin.upgrades.library import Proxy
 
-from src.terminal_value_oracle.structs import Request, Update
-
-// ETH Address for rewards
-const ETH_ADDRESS = 0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7;
+from src.terminal_value_oracle.structs import Request, Update, Reward
+from src.terminal_value_oracle.proxy_utils import (
+    initializer,
+    upgrade,
+    getAdmin,
+    setAdmin,
+    getImplementationHash,
+)
 
 // Contract interface for the middleware contracts
 @contract_interface
@@ -69,7 +75,7 @@ func get_latest_update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
     return latest_update;
 }
 
-// Function for updating the value
+// Function for updating the value 
 // This is what the updater will be calling
 @external 
 func update_value{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(request: Request) {
@@ -78,7 +84,7 @@ func update_value{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
     // Assert that maturity is not reached yet 
     let (current_block_time) = get_block_timestamp();
     with_attr error_message("This request has already expired") {
-        assert_le(request.maturity, current_block_time);
+        assert_le(current_block_time, request.maturity);
     }
     
     // Get new value    

@@ -1,6 +1,7 @@
 %lang starknet
 
 from openzeppelin.upgrades.library import Proxy
+from starkware.cairo.common.cairo_builtins import HashBuiltin
 
 // Initializer
 
