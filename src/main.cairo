@@ -13,37 +13,21 @@ from starkware.cairo.common.math import assert_le
 from starkware.cairo.common.math_cmp import is_le
 from starkware.starknet.common.syscalls import get_block_timestamp, get_caller_address
 
-// The Request struct containing information about the request
-struct Request {
-    maturity: felt,
-    requested_address: felt,
-    reward: Uint256,
-}
+from src.structs import Request, Update
 
-// The Update struct containig the updated value and the updater's address
-struct Update {
-    value: felt,
-    updater_address: felt,
-}
+// ETH Address for rewards
+const ETH_ADDRESS = 0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7;
 
-// Contract interface for the B contracts
+// Contract interface for the middleware contracts
 @contract_interface
-namespace IBContract {
+namespace IMiddlewareContract {
     func get_new_value() -> (new_value: felt) {
     }
 }
 
-// Testnet ETH Address for rewards
-const ETH_ADDRESS = 0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7;
-
-// Contains this contract's balance
-@storage_var
-func contract_balance() -> (res: Uint256) {
-}
-
 // Contains the latest update for given Request
 @storage_var
-func last_update(request_info: Request) -> (res: Update) {
+func latest_updates(request_info: Request) -> (latest_update: Update) {
 }
 
 // Contains the current requests that are not expired or cashed out
@@ -98,7 +82,7 @@ func update_value{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
     }
     
     // Get new value    
-    let (new_value) = IBContract.get_new_value(
+    let (new_value) = IMiddlewareContract.get_new_value(
         request.requested_address
     );
 
@@ -106,10 +90,11 @@ func update_value{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
     let (updater_address) = get_caller_address();
     let new_update = Update (
         new_value,
-        updater_address
+        updater_address,
+        current_block_time
     );
 
-    last_update.write(
+    latest_updates.write(
         request,
         new_update
     );
@@ -176,7 +161,7 @@ func cashout_last_update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
     }
 
     // Assert that caller is the last updater
-    let (latest_update) = last_update.read(request);
+    let (latest_update) = latest_updates.read(request);
     let (caller_address) = get_caller_address();
     with_attr error_message("Caller isn't the last updater"){
         assert caller_address = latest_update.updater_address;
@@ -225,7 +210,7 @@ func get_active_requests_usable_index{
 
 // Function for getting the first unused index in cashed_out requests storage_var
 @view
-func get_cashed_out_request_usable_index{
+func get_cashed_out_requests_usable_index{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 }(
     starting_index: felt
@@ -244,7 +229,7 @@ func get_cashed_out_request_usable_index{
     }
     
     // Continue to the next index until the end is reached
-    let (usable_index) = get_cashed_out_request_usable_index(starting_index + 1);
+    let (usable_index) = get_cashed_out_requests_usable_index(starting_index + 1);
 
     return (usable_index = usable_index);
 }
@@ -259,7 +244,7 @@ func deactivate_request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
     let (request_to_deactivate) = active_requests.read(index);
 
     // Get available index in cashed_out_requests
-    let (available_cashed_out_index) = get_cashed_out_request_usable_index(0);
+    let (available_cashed_out_index) = get_cashed_out_requests_usable_index(0);
 
     // Write new deactivated request to cashed_out_requests storage_var
     cashed_out_requests.write(
