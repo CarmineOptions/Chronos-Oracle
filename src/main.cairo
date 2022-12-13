@@ -84,6 +84,15 @@ func get_cashed_out_request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, rang
     return request_info;
 }
 
+// Getter for latest update based on the Request
+@view
+func get_latest_update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    request: Request
+) -> (latest_update: Update) {
+    let latest_update = latest_updates.read(request);
+    return latest_update;
+}
+
 // Function for updating the value
 // This is what the updater will be calling
 @external 
