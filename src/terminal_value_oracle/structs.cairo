@@ -2,11 +2,18 @@
 
 from starkware.cairo.common.uint256 import Uint256
 
+
+// Reward struct, containing information about the reward
+struct Reward {
+    token_addr: felt,
+    amount: Uint256,
+}
+
 // The Request struct containing information about the request
 struct Request {
     maturity: felt,
     requested_address: felt,
-    reward: Uint256,
+    reward: Reward,
 }
 
 // The Update struct containig the updated value and the updater's address

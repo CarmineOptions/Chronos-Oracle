@@ -107,15 +107,21 @@ func update_value{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
 func register_request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     maturity: felt,
     requested_address: felt,
-    reward: Uint256
-) {
+    reward_token_address: felt,
+    reward_amount: Uint256,
+) -> (idx: felt) {
     alloc_locals;
 
     // Assert that requested maturity hasn't already expired
     let (current_block_time) = get_block_timestamp();
     with_attr error_message("Can't setup Request with expired maturity") {
-        assert_le(maturity, current_block_time - 1);
+        assert_le(current_block_time, maturity);
     }
+
+    let reward = Reward (
+        reward_token_address,
+        reward_amount
+    );
 
     // Create new Request
     let request = Request (
@@ -136,23 +142,22 @@ func register_request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_chec
     let (caller_address) = get_caller_address();
     let (own_address) = get_contract_address();
     IERC20.transferFrom(
-        contract_address=ETH_ADDRESS,
+        contract_address = reward_token_address,
         sender = caller_address,
         recipient = own_address,
-        amount = reward
+        amount = reward_amount
     );
 
-    return ();
+    return (usable_idx,);
 }
 
-// Function for cashing out, used by the last updater after 
+// Function for cashing out, used by the last updater after from starkware.cairo.common.math import abs_value, assert_not_zero
 // the Request has expired
 @external
 func cashout_last_update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(idx: felt) {
     alloc_locals;
 
-    // Read Request at provided index
-    let (request) = active_requests.read(idx);
+    let (request) = get_active_request(idx);
 
     // Assert that Request has already expired
     let (current_block_time) = get_block_timestamp();
@@ -167,13 +172,17 @@ func cashout_last_update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
         assert caller_address = latest_update.updater_address;
     }
 
+    with_attr error_message("The latest update is empty") {
+        let update_sum = latest_update.value + latest_update.updater_address + latest_update.time_of_update;      
+        assert_not_zero(update_sum);
+    }
+
     // Pay the reward
-    // TODO: Deduct the transaction fee from reward
     let (own_address) = get_contract_address();
     IERC20.transfer(
-        contract_address = ETH_ADDRESS,
+        contract_address = request.reward.token_addr,
         recipient = latest_update.updater_address,
-        amount = request.reward
+        amount = request.reward.amount
     );
 
     // Delete request, since it has been paid
@@ -253,7 +262,8 @@ func deactivate_request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
     );
 
     // Create active Request containing zeros and write it at the index in active requests
-    let zero_request = Request (0,0,Uint256(0, 0));
+    let zero_reward = Reward(0, Uint256(0, 0));
+    let zero_request = Request(0, 0, zero_reward);
     active_requests.write(index, zero_request);
 
     // Shift remaining active Requests to the left so there is not gap
@@ -282,7 +292,9 @@ func shift_active_requests{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range
     }
 
     // Write next Request at current index and zero Request at next index
-    let zero_request = Request(0, 0, Uint256(0, 0));
+    let zero_reward = Reward(0, Uint256(0, 0));
+    let zero_request = Request(0, 0, zero_reward);
+    
     active_requests.write(index, next_request);
     active_requests.write(index + 1, zero_request);
 
