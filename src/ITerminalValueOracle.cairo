@@ -18,7 +18,7 @@ namespace ITerminalValueOracle {
     func update_value(request: Request){
     }
 
-    func register_request(maturity: felt, requested_address: felt, reward: Uint256) -> (idx: felt) {
+    func register_request(maturity: felt, requested_address: felt, reward_token_address: felt, reward_amount: Uint256) -> (idx: felt) {
     }
     
     func cashout_last_update(idx: felt) {
