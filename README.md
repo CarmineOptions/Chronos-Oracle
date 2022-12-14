@@ -1,4 +1,4 @@
-# Terminal value contract
+# Chronos oracle contract
 
 This contract stores updates of different values, that are updated by keeper bots, who are incetivized to do this based on the reward assigned by the person who requested the updates. 
 
