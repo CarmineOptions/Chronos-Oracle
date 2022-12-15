@@ -16,6 +16,7 @@ from openzeppelin.token.erc20.IERC20 import IERC20
 from openzeppelin.upgrades.library import Proxy
 
 from src.terminal_value_oracle.structs import Request, Update, Reward
+from src.terminal_value_oracle.IMiddlewareContract import IMiddlewareContract
 from src.terminal_value_oracle.proxy_utils import (
     initializer,
     upgrade,
@@ -23,13 +24,6 @@ from src.terminal_value_oracle.proxy_utils import (
     setAdmin,
     getImplementationHash,
 )
-
-// Contract interface for the middleware contracts
-@contract_interface
-namespace IMiddlewareContract {
-    func get_new_value() -> (new_value: felt) {
-    }
-}
 
 // Contains the latest update for given Request
 @storage_var
