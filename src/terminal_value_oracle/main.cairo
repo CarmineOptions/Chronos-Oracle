@@ -25,39 +25,40 @@ from src.terminal_value_oracle.proxy_utils import (
     getImplementationHash,
 )
 
+// Event that is emitted when new Request is registered
+@event
+func request_registered(
+    idx: felt,
+    maturity: felt,
+    requested_address: felt,
+    reward_token_address: felt,
+    reward_token_amount: Uint256
+) {
+}
+
 // Contains the latest update for given Request
 @storage_var
 func latest_updates(request_info: Request) -> (latest_update: Update) {
 }
 
-// Contains the current requests that are not expired or cashed out
+// Contains all of the requests
 @storage_var
-func active_requests(idx: felt) -> (request_info: Request) {
+func requests(ids: felt) -> (request: Request) {
 }
 
-// Contains requests that are already cashed out
+// Contains last index of requests storage_var
 @storage_var
-func cashed_out_requests(idx: felt) -> (request_info: Request) {
+func requests_usable_idx() -> (last_idx: felt) {
 }
 
 // Getter for active Requests based on the index
 // Usefull for iteration over all active requests
 @view
-func get_active_request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+func get_request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     idx: felt
 ) -> (request_info: Request) {
-    let request_info = active_requests.read(idx);
-    return request_info;
-}
-
-// Getter for cashed out Requests based on the index
-// Usefull for iteration over all cashed out requests
-@view
-func get_cashed_out_request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    idx: felt
-) -> (request_info: Request) {
-    let request_info = cashed_out_requests.read(idx);
-    return request_info;
+    let (request_info) = requests.read(idx);
+    return (request_info, );
 }
 
 // Getter for latest update based on the Request
@@ -68,6 +69,23 @@ func get_latest_update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
     let latest_update = latest_updates.read(request);
     return latest_update;
 }
+
+// Getter for requests usable index
+@view
+func get_requests_usable_idx{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (last_idx: felt) {
+    let last_idx = requests_usable_idx.read();
+    return last_idx;
+}
+
+// Function for incrementing requests last index by one
+func increment_requests_last_index{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(){
+    let (last_idx) = requests_usable_idx.read();
+    let new_idx = last_idx + 1;
+
+    requests_usable_idx.write(new_idx);
+    return ();
+}
+
 
 // Function for updating the value 
 // This is what the updater will be calling
@@ -114,10 +132,11 @@ func register_request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_chec
 
     // Assert that requested maturity hasn't already expired
     let (current_block_time) = get_block_timestamp();
-    with_attr error_message("Can't setup Request with expired maturity") {
+    with_attr error_message("Can't register Request with expired maturity") {
         assert_le(current_block_time, maturity);
     }
 
+    // Create Reward struct
     let reward = Reward (
         reward_token_address,
         reward_amount
@@ -131,12 +150,15 @@ func register_request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_chec
     );
 
     // Get usable index for new request and write it there
-    let (usable_idx) = get_active_requests_usable_index(0);
+    let (usable_idx) = get_requests_usable_idx();
 
-    active_requests.write(
+    requests.write(
         usable_idx,
         request
-    );
+    );  
+    
+    // Increment last index of requests
+    increment_requests_last_index();
 
     // Move reward from the caller to contract
     let (caller_address) = get_caller_address();
@@ -148,16 +170,24 @@ func register_request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_chec
         amount = reward_amount
     );
 
+    request_registered.emit(
+        idx = usable_idx,
+        maturity = maturity,
+        requested_address = requested_address,
+        reward_token_address = reward_token_address,
+        reward_token_amount = reward_amount
+    );
+
     return (usable_idx,);
 }
 
-// Function for cashing out, used by the last updater after from starkware.cairo.common.math import abs_value, assert_not_zero
+// Function for cashing out, used by the last updater
 // the Request has expired
 @external
 func cashout_last_update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(idx: felt) {
     alloc_locals;
 
-    let (request) = get_active_request(idx);
+    let (request) = get_request(idx);
 
     // Assert that Request has already expired
     let (current_block_time) = get_block_timestamp();
@@ -184,121 +214,5 @@ func cashout_last_update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
         amount = request.reward.amount
     );
 
-    // Delete request, since it has been paid
-    deactivate_request(idx);
-
     return();
-}
-
-// Function for getting the first unused index in active requests storage_var
-@view
-func get_active_requests_usable_index{
-    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
-}(
-    starting_index: felt
-) -> (usable_index: felt) {
-    // Returns lowest index that does not contain any request
-    alloc_locals;
-
-    // Read request at provided index
-    let (request) = active_requests.read(starting_index);
-
-    // Make sure it is not an empty Request, since that would mean the end of
-    // list is reached, in that case, return the index, since it is usable
-    let request_sum = request.maturity + request.requested_address;
-    if (request_sum == 0) {
-        return (usable_index = starting_index);
-    }
-    
-    // Continue to the next index until the end is reached
-    let (usable_index) = get_active_requests_usable_index(starting_index + 1);
-
-    return (usable_index = usable_index);
-}
-
-// Function for getting the first unused index in cashed_out requests storage_var
-@view
-func get_cashed_out_requests_usable_index{
-    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
-}(
-    starting_index: felt
-) -> (usable_index: felt) {
-    // Returns lowest index that does not contain any request
-    alloc_locals;
-
-    // Read request at provided index
-    let (request) = cashed_out_requests.read(starting_index);
-
-    // Make sure it is not an empty Request, since that would mean the end of
-    // list is reached, in that case, return the index, since it is usable
-    let request_sum = request.maturity + request.requested_address;
-    if (request_sum == 0) {
-        return (usable_index = starting_index);
-    }
-    
-    // Continue to the next index until the end is reached
-    let (usable_index) = get_cashed_out_requests_usable_index(starting_index + 1);
-
-    return (usable_index = usable_index);
-}
-
-// Function for removing the request after it has been cashed out
-func deactivate_request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    index: felt
-) {
-    alloc_locals;
-
-    // Read the request to be deactivated
-    let (request_to_deactivate) = active_requests.read(index);
-
-    // Get available index in cashed_out_requests
-    let (available_cashed_out_index) = get_cashed_out_requests_usable_index(0);
-
-    // Write new deactivated request to cashed_out_requests storage_var
-    cashed_out_requests.write(
-        available_cashed_out_index,
-        request_to_deactivate
-    );
-
-    // Create active Request containing zeros and write it at the index in active requests
-    let zero_reward = Reward(0, Uint256(0, 0));
-    let zero_request = Request(0, 0, zero_reward);
-    active_requests.write(index, zero_request);
-
-    // Shift remaining active Requests to the left so there is not gap
-    shift_active_requests(index);
-
-    return ();
-}
-
-// Function for shifting requests to the left
-func shift_active_requests{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    index: felt
-) {
-    alloc_locals;
-
-    // Read request at given index, assert it contains zeros
-    let (old_request) = active_requests.read(index);
-    let old_request_sum = old_request.maturity + old_request.requested_address;
-    assert old_request_sum = 0;
-
-    // Read request at the next index, if it contains zeros as well, it means we're
-    // at the end of the list
-    let (next_request) = active_requests.read(index + 1);
-    let next_request_sum = next_request.maturity + next_request.requested_address;
-    if (next_request_sum == 0) {
-        return();
-    }
-
-    // Write next Request at current index and zero Request at next index
-    let zero_reward = Reward(0, Uint256(0, 0));
-    let zero_request = Request(0, 0, zero_reward);
-    
-    active_requests.write(index, next_request);
-    active_requests.write(index + 1, zero_request);
-
-    // Continue to the next index
-    shift_active_requests(index + 1);
-
-    return ();
 }
