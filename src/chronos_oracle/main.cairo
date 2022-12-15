@@ -15,9 +15,9 @@ from starkware.cairo.common.uint256 import (
 from openzeppelin.token.erc20.IERC20 import IERC20
 from openzeppelin.upgrades.library import Proxy
 
-from src.terminal_value_oracle.structs import Request, Update, Reward
-from src.terminal_value_oracle.IMiddlewareContract import IMiddlewareContract
-from src.terminal_value_oracle.proxy_utils import (
+from src.chronos_oracle.structs import Request, Update, Reward
+from src.chronos_oracle.IMiddlewareContract import IMiddlewareContract
+from src.chronos_oracle.proxy_utils import (
     initializer,
     upgrade,
     getAdmin,
@@ -27,7 +27,7 @@ from src.terminal_value_oracle.proxy_utils import (
 
 // Event that is emitted when new Request is registered
 @event
-func request_registered(
+func RequestRegistered(
     idx: felt,
     maturity: felt,
     requested_address: felt,
@@ -170,7 +170,7 @@ func register_request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_chec
         amount = reward_amount
     );
 
-    request_registered.emit(
+    RequestRegistered.emit(
         idx = usable_idx,
         maturity = maturity,
         requested_address = requested_address,

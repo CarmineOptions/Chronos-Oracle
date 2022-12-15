@@ -1,23 +1,21 @@
 %lang starknet
 
-from tests.TerminalValueOracleTests import TerminalValueOracleTests
+from tests.ChronosOracleTests import ChronosOracleTests
 
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 
-from src.ITerminalValueOracle import ITerminalValueOracle
-
 @external
 func __setup__{syscall_ptr: felt*, range_check_ptr}(){
-    TerminalValueOracleTests.deploy_setup();
+    ChronosOracleTests.deploy_setup();
     return ();
 }
 
 @external
-func test_terminal_value_oracle{syscall_ptr: felt*, range_check_ptr}(){
+func test_chronos_oracle{syscall_ptr: felt*, range_check_ptr}(){
 
-    TerminalValueOracleTests.test_register_request();
-    TerminalValueOracleTests.test_update_request();
-    TerminalValueOracleTests.test_expire_requests();
+    ChronosOracleTests.test_register_request();
+    ChronosOracleTests.test_update_request();
+    ChronosOracleTests.test_expire_requests();
 
     return ();
 }
