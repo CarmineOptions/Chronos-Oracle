@@ -188,6 +188,13 @@ func cashout_last_update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
     alloc_locals;
 
     let (request) = get_request(idx);
+    let (latest_update) = get_latest_update(request);
+
+    // Assert that latest update exists
+    with_attr error_message("The latest update is empty") {
+        let update_sum = latest_update.value + latest_update.updater_address + latest_update.time_of_update;      
+        assert_not_zero(update_sum);
+    }
 
     // Assert that Request has already expired
     let (current_block_time) = get_block_timestamp();
@@ -196,15 +203,9 @@ func cashout_last_update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
     }
 
     // Assert that caller is the last updater
-    let (latest_update) = latest_updates.read(request);
     let (caller_address) = get_caller_address();
     with_attr error_message("Caller isn't the last updater"){
         assert caller_address = latest_update.updater_address;
-    }
-
-    with_attr error_message("The latest update is empty") {
-        let update_sum = latest_update.value + latest_update.updater_address + latest_update.time_of_update;      
-        assert_not_zero(update_sum);
     }
 
     // Pay the reward
