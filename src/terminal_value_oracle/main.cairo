@@ -184,7 +184,6 @@ func cashout_last_update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
     }
 
     // Pay the reward
-    let (own_address) = get_contract_address();
     IERC20.transfer(
         contract_address = request.reward.token_addr,
         recipient = latest_update.updater_address,
