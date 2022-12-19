@@ -1,5 +1,6 @@
 %lang starknet
 
+from starkware.cairo.common.bool import TRUE, FALSE
 from starkware.starknet.common.syscalls import get_contract_address
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.math import assert_le, assert_not_zero
@@ -52,7 +53,6 @@ func requests_usable_idx() -> (last_idx: felt) {
 }
 
 // Getter for active Requests based on the index
-// Usefull for iteration over all active requests
 @view
 func get_request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     idx: felt
@@ -144,6 +144,7 @@ func register_request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_chec
 
     // Create new Request
     let request = Request (
+        1,
         maturity,
         requested_address,
         reward
@@ -190,11 +191,10 @@ func cashout_last_update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
     let (request) = get_request(idx);
     let (latest_update) = get_latest_update(request);
 
-    // Assert that latest update exists
-    with_attr error_message("The latest update is empty") {
-        let update_sum = latest_update.value + latest_update.updater_address + latest_update.time_of_update;      
-        assert_not_zero(update_sum);
-    }
+    // Assert that the Request wasn't cashed out already
+    with_attr error_message("Request has already been cashed out"){
+        assert request.is_active = TRUE;
+    }     
 
     // Assert that Request has already expired
     let (current_block_time) = get_block_timestamp();
@@ -207,6 +207,15 @@ func cashout_last_update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
     with_attr error_message("Caller isn't the last updater"){
         assert caller_address = latest_update.updater_address;
     }
+
+    // Deactivate request and write it to the index
+    let deactivated_request = Request (
+        FALSE,
+        request.maturity,
+        request.requested_address,
+        request.reward
+    );
+    requests.write(idx, deactivated_request);
 
     // Pay the reward
     IERC20.transfer(

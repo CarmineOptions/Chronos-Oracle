@@ -16,6 +16,7 @@ func test_chronos_oracle{syscall_ptr: felt*, range_check_ptr}(){
     ChronosOracleTests.test_register_request();
     ChronosOracleTests.test_update_request();
     ChronosOracleTests.test_expire_requests();
-
+    ChronosOracleTests.test_expire_request_again();
+    
     return ();
 }

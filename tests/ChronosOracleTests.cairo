@@ -1,11 +1,13 @@
 %lang starknet
 
-from src.IChronosOracle import IChronosOracle
-from openzeppelin.token.erc20.IERC20 import IERC20
 from starkware.cairo.common.uint256 import Uint256, uint256_le
+from starkware.cairo.common.bool import TRUE, FALSE
+
+from openzeppelin.token.erc20.IERC20 import IERC20
+
+from src.IChronosOracle import IChronosOracle
 from src.chronos_oracle.structs import Update, Request, Reward
 from examples.template_example import EMPIRIC_ORACLE_ADDRESS
-
 
 namespace ChronosOracleTests {
 
@@ -156,6 +158,7 @@ namespace ChronosOracleTests {
         );
 
         let request_1 = Request (
+            TRUE,
             10,
             middleware_addr,
             reward_struct_1
@@ -171,6 +174,7 @@ namespace ChronosOracleTests {
         );
 
         let request_2 = Request (
+            TRUE,
             20,
             middleware_addr,
             reward_struct_2
@@ -218,6 +222,7 @@ namespace ChronosOracleTests {
             rew_1
         );
         let request_1 = Request (
+            TRUE,
             10,
             middleware_addr,
             reward_struct_1
@@ -233,6 +238,7 @@ namespace ChronosOracleTests {
             rew_2
         );
         let request_2 = Request (
+            TRUE,
             20,
             middleware_addr,
             reward_struct_2
@@ -330,8 +336,7 @@ namespace ChronosOracleTests {
             stop_warp_1 = warp(11, target_contract_address=ids.proxy_addr)
         %}
 
-        // Create reward structs
-        // Create first struct
+        // Create first request
         let rew_1 = Uint256(
             low = 100000000000000000,
             high = 0
@@ -341,6 +346,7 @@ namespace ChronosOracleTests {
             rew_1
         );
         let request_1 = Request (
+            FALSE,
             10,
             middleware_addr,
             reward_struct_1
@@ -356,6 +362,7 @@ namespace ChronosOracleTests {
             rew_2
         );
         let request_2 = Request (
+            FALSE,
             20,
             middleware_addr,
             reward_struct_2
@@ -408,6 +415,39 @@ namespace ChronosOracleTests {
         let (usable_idx) = IChronosOracle.get_requests_usable_idx(proxy_addr);
         assert usable_idx = 2;
         
+        // Assert that the requests are not active
+        let (stored_request_1) = IChronosOracle.get_request(proxy_addr, 0);
+        assert stored_request_1.is_active = FALSE;
+
+        let (stored_request_2) = IChronosOracle.get_request(proxy_addr, 1);
+        assert stored_request_2.is_active = FALSE;
+        
+        %{
+            stop_warp_1()
+            stop_prank_oracle()
+        %}
+        return ();
+    }
+
+    func test_expire_request_again{syscall_ptr: felt*, range_check_ptr}() {
+        tempvar proxy_addr;
+
+        %{
+            ids.proxy_addr = context.proxy_addr
+            stop_prank_oracle = start_prank(
+                context.keepers_address,
+                context.proxy_addr
+            )
+            
+            # Set time to after expiry of first request
+            stop_warp_1 = warp(11, target_contract_address=ids.proxy_addr)
+
+            expect_revert(error_message = "Request has already been cashed out")
+        %}
+
+        // Expire first request
+        IChronosOracle.cashout_last_update(proxy_addr, 0);
+
         return ();
     }
 
