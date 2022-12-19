@@ -1,6 +1,6 @@
 # Chronos oracle contract
 
-Currently deployed at: '0x017614914e01ac1a49857bf4571eda64005727c7861df577ab7f981d5e84ffdc'
+Currently deployed at: `0x017614914e01ac1a49857bf4571eda64005727c7861df577ab7f981d5e84ffdc`
 
 This contract stores updates of different values, that are updated by keeper bots, who are incetivized to do this based on the reward assigned by the person who requested the updates. 
 
