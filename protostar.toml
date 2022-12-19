@@ -8,4 +8,4 @@ cairo-path = [
 [contracts]
 proxy = ["src/proxy_contract/proxy.cairo"]
 example = ["examples/template_example.cairo"]
-main = ["src/terminal_value_oracle/main.cairo"]
+main = ["src/chronos_oracle/main.cairo"]

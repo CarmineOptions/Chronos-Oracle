@@ -1,13 +1,15 @@
 %lang starknet
 
-from src.ITerminalValueOracle import ITerminalValueOracle
-from openzeppelin.token.erc20.IERC20 import IERC20
 from starkware.cairo.common.uint256 import Uint256, uint256_le
-from src.terminal_value_oracle.structs import Update, Request, Reward
+from starkware.cairo.common.bool import TRUE, FALSE
+
+from openzeppelin.token.erc20.IERC20 import IERC20
+
+from src.IChronosOracle import IChronosOracle
+from src.chronos_oracle.structs import Update, Request, Reward
 from examples.template_example import EMPIRIC_ORACLE_ADDRESS
 
-
-namespace TerminalValueOracleTests {
+namespace ChronosOracleTests {
 
     func deploy_setup{syscall_ptr: felt*, range_check_ptr}() {
         alloc_locals;
@@ -21,13 +23,13 @@ namespace TerminalValueOracleTests {
             context.requesters_address = 321
             context.keepers_address = 213
 
-            context.terminal_value_oracle_hash = declare(
-                "src/terminal_value_oracle/main.cairo"
+            context.chronos_oracle_hash = declare(
+                "src/chronos_oracle/main.cairo"
             ).class_hash       
 
             context.proxy_addr = deploy_contract(
                 "src/proxy_contract/proxy.cairo",
-                [context.terminal_value_oracle_hash, 0, 0]
+                [context.chronos_oracle_hash, 0, 0]
             ).contract_address
 
             context.middleware_addr = deploy_contract(
@@ -46,7 +48,7 @@ namespace TerminalValueOracleTests {
 
         %}
 
-        ITerminalValueOracle.initializer(proxy_addr, admin_address);
+        IChronosOracle.initializer(proxy_addr, admin_address);
 
         %{
             stop_prank_eth = start_prank(context.requesters_address, context.eth_address)
@@ -80,6 +82,21 @@ namespace TerminalValueOracleTests {
             )
             
             stop_warp_1 = warp(0, target_contract_address=ids.proxy_addr)
+
+            # Expect RequestRegistered events
+            expect_events(
+                # First Request
+                {
+                    "name" : "RequestRegistered",
+                    "data" : [0, 10, context.middleware_addr, context.eth_address, 100000000000000000, 0]
+                },
+                # Seconds Request
+                {
+                    "name" : "RequestRegistered",
+                    "data" : [1, 20, context.middleware_addr, context.eth_address, 200000000000000000, 0]
+                },
+            )
+
         %}
 
 
@@ -88,8 +105,14 @@ namespace TerminalValueOracleTests {
             high = 0
         );
 
+        // Assert that first usable index is 0
+        let (usable_idx_0) = IChronosOracle.get_requests_usable_idx(proxy_addr);
+
+        // Assert that usable idx is 1
+        assert usable_idx_0 = 0;
+
         // Register request
-        let (idx_1) = ITerminalValueOracle.register_request(
+        let (idx_1) = IChronosOracle.register_request(
             proxy_addr,
             10,
             middleware_addr,
@@ -100,7 +123,7 @@ namespace TerminalValueOracleTests {
         // Assert it has been written in index 0 since it's first Request
         assert idx_1 = 0;
 
-        let (usable_idx_1) = ITerminalValueOracle.get_active_requests_usable_index(proxy_addr, 0);
+        let (usable_idx_1) = IChronosOracle.get_requests_usable_idx(proxy_addr);
 
         // Assert that usable idx is 1
         assert usable_idx_1 = 1;
@@ -111,7 +134,7 @@ namespace TerminalValueOracleTests {
         );
 
         // Register second request
-        let (idx_2) = ITerminalValueOracle.register_request(
+        let (idx_2) = IChronosOracle.register_request(
             proxy_addr,
             20,
             middleware_addr,
@@ -122,7 +145,7 @@ namespace TerminalValueOracleTests {
         // Assert it's been written at index 1 since it's second request
         assert idx_2 = 1;
 
-        let (usable_idx_2) = ITerminalValueOracle.get_active_requests_usable_index(proxy_addr, 0);
+        let (usable_idx_2) = IChronosOracle.get_requests_usable_idx(proxy_addr);
 
         // Assert that usable idx is 1
         assert usable_idx_2 = 2;
@@ -135,12 +158,13 @@ namespace TerminalValueOracleTests {
         );
 
         let request_1 = Request (
+            TRUE,
             10,
             middleware_addr,
             reward_struct_1
         );
 
-        let (stored_request_1) = ITerminalValueOracle.get_active_request(proxy_addr, 0);
+        let (stored_request_1) = IChronosOracle.get_request(proxy_addr, 0);
         assert stored_request_1 = request_1;
 
         // Assert second request
@@ -150,12 +174,13 @@ namespace TerminalValueOracleTests {
         );
 
         let request_2 = Request (
+            TRUE,
             20,
             middleware_addr,
             reward_struct_2
         );
 
-        let (stored_request_2) = ITerminalValueOracle.get_active_request(proxy_addr, 1);
+        let (stored_request_2) = IChronosOracle.get_request(proxy_addr, 1);
         assert stored_request_2 = request_2;
 
         %{
@@ -166,7 +191,7 @@ namespace TerminalValueOracleTests {
         return ();
     }
 
-    func test_update_request{syscall_ptr: felt*, range_check_ptr}() {
+        func test_update_request{syscall_ptr: felt*, range_check_ptr}() {
         alloc_locals;
 
         tempvar middleware_addr;
@@ -197,6 +222,7 @@ namespace TerminalValueOracleTests {
             rew_1
         );
         let request_1 = Request (
+            TRUE,
             10,
             middleware_addr,
             reward_struct_1
@@ -212,14 +238,15 @@ namespace TerminalValueOracleTests {
             rew_2
         );
         let request_2 = Request (
+            TRUE,
             20,
             middleware_addr,
             reward_struct_2
         );
 
         // Fetch latest updates before updating
-        let (latest_update_1_1) = ITerminalValueOracle.get_latest_update(proxy_addr, request_1);
-        let (latest_update_2_1) = ITerminalValueOracle.get_latest_update(proxy_addr, request_2);
+        let (latest_update_1_1) = IChronosOracle.get_latest_update(proxy_addr, request_1);
+        let (latest_update_2_1) = IChronosOracle.get_latest_update(proxy_addr, request_2);
 
         assert latest_update_1_1.value = 0;
         assert latest_update_2_1.value = 0;
@@ -235,12 +262,12 @@ namespace TerminalValueOracleTests {
         %}
 
         // Update values
-        ITerminalValueOracle.update_value(proxy_addr, request_1);
-        ITerminalValueOracle.update_value(proxy_addr, request_2);
+        IChronosOracle.update_value(proxy_addr, request_1);
+        IChronosOracle.update_value(proxy_addr, request_2);
 
         // Fetch latest updates after updating
-        let (latest_update_1_2) = ITerminalValueOracle.get_latest_update(proxy_addr, request_1);
-        let (latest_update_2_2) = ITerminalValueOracle.get_latest_update(proxy_addr, request_2);
+        let (latest_update_1_2) = IChronosOracle.get_latest_update(proxy_addr, request_1);
+        let (latest_update_2_2) = IChronosOracle.get_latest_update(proxy_addr, request_2);
 
         assert latest_update_1_2.value = 140000000000;
         assert latest_update_2_2.value = 140000000000;
@@ -262,12 +289,12 @@ namespace TerminalValueOracleTests {
         %}
 
         // Update values again
-        ITerminalValueOracle.update_value(proxy_addr, request_1);
-        ITerminalValueOracle.update_value(proxy_addr, request_2);
+        IChronosOracle.update_value(proxy_addr, request_1);
+        IChronosOracle.update_value(proxy_addr, request_2);
 
         // Fetch latest updates after updating again
-        let (latest_update_1_3) = ITerminalValueOracle.get_latest_update(proxy_addr, request_1);
-        let (latest_update_2_3) = ITerminalValueOracle.get_latest_update(proxy_addr, request_2);
+        let (latest_update_1_3) = IChronosOracle.get_latest_update(proxy_addr, request_1);
+        let (latest_update_2_3) = IChronosOracle.get_latest_update(proxy_addr, request_2);
 
         assert latest_update_1_3.value = 150000000000;
         assert latest_update_2_3.value = 150000000000;
@@ -309,8 +336,7 @@ namespace TerminalValueOracleTests {
             stop_warp_1 = warp(11, target_contract_address=ids.proxy_addr)
         %}
 
-        // Create reward structs
-        // Create first struct
+        // Create first request
         let rew_1 = Uint256(
             low = 100000000000000000,
             high = 0
@@ -320,6 +346,7 @@ namespace TerminalValueOracleTests {
             rew_1
         );
         let request_1 = Request (
+            FALSE,
             10,
             middleware_addr,
             reward_struct_1
@@ -335,40 +362,14 @@ namespace TerminalValueOracleTests {
             rew_2
         );
         let request_2 = Request (
+            FALSE,
             20,
             middleware_addr,
             reward_struct_2
         );
 
-        // Create zero'd request
-        let rew_3 = Uint256(
-            low = 0,
-            high = 0
-        );
-        let reward_struct_3 = Reward (
-            0,
-            rew_3
-        );
-        let request_3 = Request (
-            0,
-            0,
-            reward_struct_3
-        );
-
         // Expire first request
-        ITerminalValueOracle.cashout_last_update(proxy_addr, 0);
-        
-        // Read the cashed out request at first index
-        let (cashed_1) = ITerminalValueOracle.get_cashed_out_request(proxy_addr, 0);
-        assert cashed_1 = request_1;
-        
-        // Read active request at first index to assert it is the seconds one since it's been moved to the left 
-        let (active_1) = ITerminalValueOracle.get_active_request(proxy_addr, 0);
-        assert active_1 = request_2;
-        
-        // Read active request at second index to assert it is zero'd
-        let (active_2) = ITerminalValueOracle.get_active_request(proxy_addr, 1);
-        assert active_2 = request_3;
+        IChronosOracle.cashout_last_update(proxy_addr, 0);
 
         // Assert that keeper received the reward
         let (balance_keeper_1) = IERC20.balanceOf(
@@ -393,16 +394,8 @@ namespace TerminalValueOracleTests {
             stop_warp_2 = warp(21, target_contract_address=ids.proxy_addr)
         %}
 
-        // Expire second request which is now stored at index 0
-        ITerminalValueOracle.cashout_last_update(proxy_addr, 0);
-        
-        // Read the cashed out request at second index
-        let (cashed_2) = ITerminalValueOracle.get_cashed_out_request(proxy_addr, 1);
-        assert cashed_2 = request_2;
-
-        // Read active request at first index to assert it is zero'd
-        let (active_3) = ITerminalValueOracle.get_active_request(proxy_addr, 0);
-        assert active_3 = request_3;
+        // Expire second request at index 1
+        IChronosOracle.cashout_last_update(proxy_addr, 1);
 
         // Assert that keeper received the reward
         let (balance_keeper_2) = IERC20.balanceOf(
@@ -418,11 +411,44 @@ namespace TerminalValueOracleTests {
         );
         assert balance_oracle_2.low = 0;
 
-        // Test that active requests usable index is 0
-        let (usable_idx) = ITerminalValueOracle.get_active_requests_usable_index(proxy_addr, 0);
-        assert usable_idx = 0;
+        // Test that active requests usable index is 2
+        let (usable_idx) = IChronosOracle.get_requests_usable_idx(proxy_addr);
+        assert usable_idx = 2;
         
+        // Assert that the requests are not active
+        let (stored_request_1) = IChronosOracle.get_request(proxy_addr, 0);
+        assert stored_request_1.is_active = FALSE;
+
+        let (stored_request_2) = IChronosOracle.get_request(proxy_addr, 1);
+        assert stored_request_2.is_active = FALSE;
+        
+        %{
+            stop_warp_1()
+            stop_prank_oracle()
+        %}
         return ();
     }
-    
+
+    func test_expire_request_again{syscall_ptr: felt*, range_check_ptr}() {
+        tempvar proxy_addr;
+
+        %{
+            ids.proxy_addr = context.proxy_addr
+            stop_prank_oracle = start_prank(
+                context.keepers_address,
+                context.proxy_addr
+            )
+            
+            # Set time to after expiry of first request
+            stop_warp_1 = warp(11, target_contract_address=ids.proxy_addr)
+
+            expect_revert(error_message = "Request has already been cashed out")
+        %}
+
+        // Expire first request
+        IChronosOracle.cashout_last_update(proxy_addr, 0);
+
+        return ();
+    }
+
 }

@@ -11,6 +11,7 @@ struct Reward {
 
 // The Request struct containing information about the request
 struct Request {
+    is_active: felt,
     maturity: felt,
     requested_address: felt,
     reward: Reward,

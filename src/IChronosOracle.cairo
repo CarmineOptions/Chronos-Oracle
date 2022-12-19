@@ -1,17 +1,14 @@
 %lang starknet
 
 from starkware.cairo.common.uint256 import Uint256
-from src.terminal_value_oracle.structs import Request, Update
+from src.chronos_oracle.structs import Request, Update
 
 @contract_interface
-namespace ITerminalValueOracle {
+namespace IChronosOracle {
 
-    func get_active_request(idx: felt) -> (request_info: Request) {
+    func get_request(idx: felt) -> (request_info: Request) {
     }
 
-    func get_cashed_out_request(idx: felt) -> (request_info: Request) {
-    }
-    
     func get_latest_update(request: Request) -> (latest_update: Update) {
     }    
 
@@ -24,12 +21,9 @@ namespace ITerminalValueOracle {
     func cashout_last_update(idx: felt) {
     }    
     
-    func get_active_requests_usable_index(starting_index: felt) -> (usable_index: felt) {
+    func get_requests_usable_idx() -> (usable_idx: felt) {
     }
     
-    func get_cashed_out_requests_usable_index(starting_index: felt) -> (usable_index: felt) {
-    }
-
     func initializer(proxy_admin: felt) {
     }
 
