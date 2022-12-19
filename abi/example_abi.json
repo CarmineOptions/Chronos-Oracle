@@ -1,0 +1,14 @@
+[
+    {
+        "inputs": [],
+        "name": "get_new_value",
+        "outputs": [
+            {
+                "name": "new_value",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    }
+]

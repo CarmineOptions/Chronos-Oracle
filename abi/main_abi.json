@@ -1,0 +1,291 @@
+[
+    {
+        "members": [
+            {
+                "name": "low",
+                "offset": 0,
+                "type": "felt"
+            },
+            {
+                "name": "high",
+                "offset": 1,
+                "type": "felt"
+            }
+        ],
+        "name": "Uint256",
+        "size": 2,
+        "type": "struct"
+    },
+    {
+        "members": [
+            {
+                "name": "is_active",
+                "offset": 0,
+                "type": "felt"
+            },
+            {
+                "name": "maturity",
+                "offset": 1,
+                "type": "felt"
+            },
+            {
+                "name": "requested_address",
+                "offset": 2,
+                "type": "felt"
+            },
+            {
+                "name": "reward",
+                "offset": 3,
+                "type": "Reward"
+            }
+        ],
+        "name": "Request",
+        "size": 6,
+        "type": "struct"
+    },
+    {
+        "members": [
+            {
+                "name": "token_addr",
+                "offset": 0,
+                "type": "felt"
+            },
+            {
+                "name": "amount",
+                "offset": 1,
+                "type": "Uint256"
+            }
+        ],
+        "name": "Reward",
+        "size": 3,
+        "type": "struct"
+    },
+    {
+        "members": [
+            {
+                "name": "value",
+                "offset": 0,
+                "type": "felt"
+            },
+            {
+                "name": "updater_address",
+                "offset": 1,
+                "type": "felt"
+            },
+            {
+                "name": "time_of_update",
+                "offset": 2,
+                "type": "felt"
+            }
+        ],
+        "name": "Update",
+        "size": 3,
+        "type": "struct"
+    },
+    {
+        "data": [
+            {
+                "name": "implementation",
+                "type": "felt"
+            }
+        ],
+        "keys": [],
+        "name": "Upgraded",
+        "type": "event"
+    },
+    {
+        "data": [
+            {
+                "name": "previousAdmin",
+                "type": "felt"
+            },
+            {
+                "name": "newAdmin",
+                "type": "felt"
+            }
+        ],
+        "keys": [],
+        "name": "AdminChanged",
+        "type": "event"
+    },
+    {
+        "inputs": [
+            {
+                "name": "proxy_admin",
+                "type": "felt"
+            }
+        ],
+        "name": "initializer",
+        "outputs": [],
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "new_implementation",
+                "type": "felt"
+            }
+        ],
+        "name": "upgrade",
+        "outputs": [],
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getAdmin",
+        "outputs": [
+            {
+                "name": "address",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "address",
+                "type": "felt"
+            }
+        ],
+        "name": "setAdmin",
+        "outputs": [],
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getImplementationHash",
+        "outputs": [
+            {
+                "name": "implementation_hash",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "data": [
+            {
+                "name": "idx",
+                "type": "felt"
+            },
+            {
+                "name": "maturity",
+                "type": "felt"
+            },
+            {
+                "name": "requested_address",
+                "type": "felt"
+            },
+            {
+                "name": "reward_token_address",
+                "type": "felt"
+            },
+            {
+                "name": "reward_token_amount",
+                "type": "Uint256"
+            }
+        ],
+        "keys": [],
+        "name": "RequestRegistered",
+        "type": "event"
+    },
+    {
+        "inputs": [
+            {
+                "name": "idx",
+                "type": "felt"
+            }
+        ],
+        "name": "get_request",
+        "outputs": [
+            {
+                "name": "request_info",
+                "type": "Request"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "request",
+                "type": "Request"
+            }
+        ],
+        "name": "get_latest_update",
+        "outputs": [
+            {
+                "name": "latest_update",
+                "type": "Update"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "get_requests_usable_idx",
+        "outputs": [
+            {
+                "name": "last_idx",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "request",
+                "type": "Request"
+            }
+        ],
+        "name": "update_value",
+        "outputs": [],
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "maturity",
+                "type": "felt"
+            },
+            {
+                "name": "requested_address",
+                "type": "felt"
+            },
+            {
+                "name": "reward_token_address",
+                "type": "felt"
+            },
+            {
+                "name": "reward_amount",
+                "type": "Uint256"
+            }
+        ],
+        "name": "register_request",
+        "outputs": [
+            {
+                "name": "idx",
+                "type": "felt"
+            }
+        ],
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "idx",
+                "type": "felt"
+            }
+        ],
+        "name": "cashout_last_update",
+        "outputs": [],
+        "type": "function"
+    }
+]
